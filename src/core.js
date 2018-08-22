@@ -244,6 +244,17 @@ jQuery.extend( {
 			return false;
 		}
 
+		/**
+		 * @author Skuid
+		 * The window object in locker service does not have a .hasOwnProperty function, but
+		 * it acts like a plain object. For jquery's purposes, it should not be treated as a
+		 * plain object. As far as I know, the locker service object will be one of the few
+		 * objects that does not have a .hasOwnProperty function.
+		 */
+		if ( !obj.hasOwnProperty ) {
+			return false;
+		}
+
 		proto = getProto( obj );
 
 		// Objects with no prototype (e.g., `Object.create( null )`) are plain

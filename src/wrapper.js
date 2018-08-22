@@ -1,4 +1,8 @@
 /* eslint-disable no-unused-vars*/
+/**
+ * Includes several Skuid modifications, all of which should be annotated by:
+ * @author Skuid
+ */
 /*!
  * jQuery JavaScript Library v@VERSION
  * https://jquery.com/

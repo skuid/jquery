@@ -1,3 +1,7 @@
+/**
+ * Includes several Skuid modifications, all of which should be annotated by:
+ * @author Skuid
+ */
 /*!
  * jQuery JavaScript Library v3.1.1
  * https://jquery.com/
@@ -9,7 +13,7 @@
  * Released under the MIT license
  * https://jquery.org/license
  *
- * Date: 2018-08-22T17:20Z
+ * Date: 2018-08-22T17:32Z
  */
 ( function( global, factory ) {
 
@@ -305,6 +309,17 @@ jQuery.extend( {
 		// Detect obvious negatives
 		// Use toString instead of jQuery.type to catch host objects
 		if ( !obj || toString.call( obj ) !== "[object Object]" ) {
+			return false;
+		}
+
+		/**
+		 * @author Skuid
+		 * The window object in locker service does not have a .hasOwnProperty function, but
+		 * it acts like a plain object. For jquery's purposes, it should not be treated as a
+		 * plain object. As far as I know, the locker service object will be one of the few
+		 * objects that does not have a .hasOwnProperty function.
+		 */
+		if ( !obj.hasOwnProperty ) {
 			return false;
 		}
 
