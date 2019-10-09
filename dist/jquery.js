@@ -13,7 +13,7 @@
  * Released under the MIT license
  * https://jquery.org/license
  *
- * Date: 2018-08-22T17:32Z
+ * Date: 2019-10-09T15:18Z
  */
 ( function( global, factory ) {
 
@@ -569,7 +569,7 @@ var Sizzle =
  * Released under the MIT license
  * http://jquery.org/license
  *
- * Date: 2018-08-22
+ * Date: 2019-10-09
  */
 (function( window ) {
 
@@ -1220,8 +1220,19 @@ setDocument = Sizzle.setDocument = function( node ) {
 		return !el.getElementsByTagName("*").length;
 	});
 
+	//----------------------------------------------------------
+	/**
+	 * @author Skuid
+	 * In Lightning Locker, post Winter '20, the document.getElementsByClassName function is no longer the native
+	 * implementation, but it can still be used as if it were. It is safe to assume that all browsers supported by
+	 * Lightning also support this feature.
+	 * https://releasenotes.docs.salesforce.com/en-us/winter20/release-notes/rn_lwc_dom_api.htm
+	 *
+	 * This issue is documented in CORE-2571
+	 */
 	// Support: IE<9
-	support.getElementsByClassName = rnative.test( document.getElementsByClassName );
+	support.getElementsByClassName = rnative.test( document.getElementsByClassName ) || !!window.$A;
+	//----------------------------------------------------------
 
 	// Support: IE<10
 	// Check if getElementById returns elements by name
@@ -1341,7 +1352,19 @@ setDocument = Sizzle.setDocument = function( node ) {
 	// See https://bugs.jquery.com/ticket/13378
 	rbuggyQSA = [];
 
-	if ( (support.qsa = rnative.test( document.querySelectorAll )) ) {
+	//----------------------------------------------------------
+	/**
+	 * @author Skuid
+	 * In Lightning Locker, post Winter '20, the document.querySelectorAll function is no longer the native
+	 * implementation, but it can still be used as if it were. It is safe to assume that all browsers supported by
+	 * Lightning also support this feature.
+	 * https://releasenotes.docs.salesforce.com/en-us/winter20/release-notes/rn_lwc_dom_api.htm
+	 *
+	 * This issue is documented in CORE-2571
+	 */
+	support.qsa = rnative.test( document.querySelectorAll ) || !!window.$A;
+	//----------------------------------------------------------
+	if (/*skuid --*/support.qsa/*-- skuid*/) {
 		// Build QSA regex
 		// Regex strategy adopted from Diego Perini
 		assert(function( el ) {
