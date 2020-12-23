@@ -1,4 +1,4 @@
-QUnit.module( "traversing", { teardown: moduleTeardown } );
+QUnit.module( "traversing", { afterEach: moduleTeardown } );
 
 QUnit.test( "find(String)", function( assert ) {
 	assert.expect( 1 );
@@ -13,7 +13,7 @@ QUnit.test( "find(String) under non-elements", function( assert ) {
 	assert.equal( j.find( "div" ).addBack().length, 3, "Check node,textnode,comment to find zero divs, but preserves pushStack" );
 } );
 
-QUnit[ jQuery.find.compile ? "test" : "skip" ]( "find(leading combinator)", function( assert ) {
+QUnit[ QUnit.jQuerySelectors ? "test" : "skip" ]( "find(leading combinator)", function( assert ) {
 	assert.expect( 4 );
 
 	assert.deepEqual( jQuery( "#qunit-fixture" ).find( "> div" ).get(), q( "foo", "nothiddendiv", "moretests", "tabindex-tests", "liveHandlerOrder", "siblingTest", "fx-test-group" ), "find child elements" );
@@ -50,8 +50,24 @@ QUnit.test( "find(node|jQuery object)", function( assert ) {
 	assert.equal( $two.find( $foo[ 0 ] ).addBack().length, 2, "find preserves the pushStack, see #12009" );
 } );
 
-QUnit.test( "is(String|undefined)", function( assert ) {
-	assert.expect( 23 );
+QUnit.test( "is(falsy|invalid)", function( assert ) {
+	assert.expect( 5 );
+
+	assert.ok( !jQuery( "#foo" ).is( 0 ), "Expected false for an invalid expression - 0" );
+	assert.ok( !jQuery( "#foo" ).is( null ), "Expected false for an invalid expression - null" );
+	assert.ok( !jQuery( "#foo" ).is( "" ), "Expected false for an invalid expression - \"\"" );
+	assert.ok( !jQuery( "#foo" ).is( undefined ), "Expected false for an invalid expression - undefined" );
+	assert.ok( !jQuery( "#foo" ).is( { plain: "object" } ), "Check passing invalid object" );
+} );
+
+QUnit.test( "is(String)", function( assert ) {
+	assert.expect( 33 );
+
+	var link = document.getElementById( "simon1" ),
+		input = document.getElementById( "text1" ),
+		option = document.getElementById( "option1a" ),
+		disconnected = document.createElement( "div" );
+
 	assert.ok( jQuery( "#form" ).is( "form" ), "Check for element: A form must be a form" );
 	assert.ok( !jQuery( "#form" ).is( "div" ), "Check for element: A form is not a div" );
 	assert.ok( jQuery( "#mark" ).is( ".blog" ), "Check for class: Expected class 'blog'" );
@@ -67,17 +83,56 @@ QUnit.test( "is(String|undefined)", function( assert ) {
 	assert.ok( jQuery( "#radio2" ).is( ":checked" ), "Check for pseudoclass: Expected to be checked" );
 	assert.ok( !jQuery( "#radio1" ).is( ":checked" ), "Check for pseudoclass: Expected not checked" );
 
-	assert.ok( !jQuery( "#foo" ).is( 0 ), "Expected false for an invalid expression - 0" );
-	assert.ok( !jQuery( "#foo" ).is( null ), "Expected false for an invalid expression - null" );
-	assert.ok( !jQuery( "#foo" ).is( "" ), "Expected false for an invalid expression - \"\"" );
-	assert.ok( !jQuery( "#foo" ).is( undefined ), "Expected false for an invalid expression - undefined" );
-	assert.ok( !jQuery( "#foo" ).is( { plain: "object" } ), "Check passing invalid object" );
-
 	// test is() with comma-separated expressions
 	assert.ok( jQuery( "#en" ).is( "[lang=\"en\"],[lang=\"de\"]" ), "Comma-separated; Check for lang attribute: Expect en or de" );
 	assert.ok( jQuery( "#en" ).is( "[lang=\"de\"],[lang=\"en\"]" ), "Comma-separated; Check for lang attribute: Expect en or de" );
 	assert.ok( jQuery( "#en" ).is( "[lang=\"en\"] , [lang=\"de\"]" ), "Comma-separated; Check for lang attribute: Expect en or de" );
 	assert.ok( jQuery( "#en" ).is( "[lang=\"de\"] , [lang=\"en\"]" ), "Comma-separated; Check for lang attribute: Expect en or de" );
+
+	link.title = "Don't click me";
+	assert.ok( jQuery( link ).is( "[rel='bookmark']" ), "attribute-equals string (delimited via apostrophes)" );
+	assert.ok( jQuery( link ).is( "[rel=bookmark]" ), "attribute-equals identifier" );
+	assert.ok( jQuery( link ).is( "[\nrel = bookmark\t]" ),
+		"attribute-equals identifier (whitespace ignored)" );
+	assert.ok( jQuery( link ).is( "a[title=\"Don't click me\"]" ),
+		"attribute-equals string containing single quote" );
+
+	// jQuery trac-12303
+	input.setAttribute( "data-pos", ":first" );
+	assert.ok( jQuery( input ).is( "input[data-pos=\\:first]" ),
+		"attribute-equals POS in identifier" );
+	assert.ok( jQuery( input ).is( "input[data-pos=':first']" ),
+		"attribute-equals POS in string" );
+
+	if ( QUnit.jQuerySelectors ) {
+		assert.ok( jQuery( input ).is( ":input[data-pos=':first']" ),
+			"attribute-equals POS in string after pseudo" );
+	} else {
+		assert.ok( "skip", ":input not supported in selector-native" );
+	}
+
+	option.setAttribute( "test", "" );
+	assert.ok( jQuery( option ).is( "[id=option1a]" ),
+		"id attribute-equals identifier" );
+
+	if ( QUnit.jQuerySelectors ) {
+		assert.ok( jQuery( option ).is( "[id*=option1][type!=checkbox]" ),
+			"attribute-not-equals identifier" );
+	} else {
+		assert.ok( "skip", "attribute-not-equals not supported in selector-native" );
+	}
+
+	assert.ok( jQuery( option ).is( "[id*=option1]" ), "attribute-contains identifier" );
+	assert.ok( !jQuery( option ).is( "[test^='']" ),
+		"attribute-starts-with empty string (negative)" );
+
+	option.className = "=]";
+	assert.ok( jQuery( option ).is( ".\\=\\]" ),
+		"class selector with attribute-equals confusable" );
+
+	assert.ok( jQuery( disconnected ).is( "div" ), "disconnected element" );
+	assert.ok( jQuery( link ).is( "* > *" ), "child combinator matches in document" );
+	assert.ok( !jQuery( disconnected ).is( "* > *" ), "child combinator fails in fragment" );
 } );
 
 QUnit.test( "is() against non-elements (#10178)", function( assert ) {
@@ -130,7 +185,7 @@ QUnit.test( "is(jQuery)", function( assert ) {
 	assert.ok( !jQuery( "#simon" ).is( jQuery( ".blogTest" )[ 0 ] ), "Check for multiple classes: Expected classes 'blog' and 'link', but not 'blogTest'" );
 } );
 
-QUnit[ jQuery.find.compile ? "test" : "skip" ]( "is() with :has() selectors", function( assert ) {
+QUnit[ QUnit.jQuerySelectors ? "test" : "skip" ]( "is() with :has() selectors", function( assert ) {
 	assert.expect( 6 );
 
 	assert.ok( jQuery( "#foo" ).is( ":has(p)" ), "Check for child: Expected a child 'p' element" );
@@ -142,7 +197,7 @@ QUnit[ jQuery.find.compile ? "test" : "skip" ]( "is() with :has() selectors", fu
 	assert.ok( !jQuery( "#foo" ).is( jQuery( "div:has(ul)" ) ), "Check for child: Did not expect 'ul' element" );
 } );
 
-QUnit[ jQuery.find.compile ? "test" : "skip" ]( "is() with positional selectors", function( assert ) {
+QUnit[ QUnit.jQuerySelectorsPos ? "test" : "skip" ]( "is() with positional selectors", function( assert ) {
 	assert.expect( 27 );
 
 	var
@@ -197,7 +252,7 @@ QUnit.test( "index()", function( assert ) {
 
 	assert.equal( jQuery( "#text2" ).index(), 2, "Returns the index of a child amongst its siblings" );
 
-	assert.equal( jQuery( "<div/>" ).index(), -1, "Node without parent returns -1" );
+	assert.equal( jQuery( "<div></div>" ).index(), -1, "Node without parent returns -1" );
 } );
 
 QUnit.test( "index(Object|String|undefined)", function( assert ) {
@@ -279,7 +334,7 @@ QUnit.test( "filter(jQuery)", function( assert ) {
 	assert.deepEqual( jQuery( "#form input" ).filter( elements ).get(), q( "text1" ), "filter(Element)" );
 } );
 
-QUnit[ jQuery.find.compile ? "test" : "skip" ]( "filter() with positional selectors", function( assert ) {
+QUnit[ QUnit.jQuerySelectorsPos ? "test" : "skip" ]( "filter() with positional selectors", function( assert ) {
 	assert.expect( 19 );
 
 	var filterit = function( sel, filter, length ) {
@@ -360,7 +415,7 @@ QUnit.test( "closest()", function( assert ) {
 	assert.deepEqual( jq.contents().closest( "*" ).get(), jq.get(), "Text node input (#13332)" );
 } );
 
-QUnit[ jQuery.find.compile ? "test" : "skip" ]( "closest() with positional selectors", function( assert ) {
+QUnit[ QUnit.jQuerySelectorsPos ? "test" : "skip" ]( "closest() with positional selectors", function( assert ) {
 	assert.expect( 3 );
 
 	assert.deepEqual( jQuery( "#qunit-fixture" ).closest( "div:first" ).get(), [],
@@ -390,7 +445,7 @@ QUnit.test( "closest(jQuery)", function( assert ) {
 	assert.ok( $child.closest( $body.add( $parent ) ).is( "#nothiddendiv" ), "Closest ancestor retrieved." );
 } );
 
-QUnit[ jQuery.find.compile ? "test" : "skip" ]( "not(Selector)", function( assert ) {
+QUnit[ QUnit.jQuerySelectors ? "test" : "skip" ]( "not(Selector)", function( assert ) {
 	assert.expect( 7 );
 	assert.equal( jQuery( "#qunit-fixture > p#ap > a" ).not( "#google" ).length, 2, "not('selector')" );
 
@@ -470,7 +525,7 @@ QUnit.test( "not(jQuery)", function( assert ) {
 	);
 } );
 
-QUnit[ jQuery.find.compile ? "test" : "skip" ]( "not(Selector) excludes non-element nodes (gh-2808)", function( assert ) {
+QUnit[ QUnit.jQuerySelectors ? "test" : "skip" ]( "not(Selector) excludes non-element nodes (gh-2808)", function( assert ) {
 	assert.expect( 3 );
 
 	var mixedContents = jQuery( "#nonnodes" ).contents(),
@@ -502,7 +557,7 @@ QUnit.test( "has(Element)", function( assert ) {
 	obj = jQuery( "#qunit-fixture" ).has( jQuery( "#sndp" )[ 0 ] );
 	assert.deepEqual( obj.get(), q( "qunit-fixture" ), "Keeps elements that have the element as a descendant" );
 
-	detached = jQuery( "<a><b><i/></b></a>" );
+	detached = jQuery( "<a><b><i></i></b></a>" );
 	assert.deepEqual( detached.has( detached.find( "i" )[ 0 ] ).get(), detached.get(), "...Even when detached" );
 
 	multipleParent = jQuery( "#qunit-fixture, #header" ).has( jQuery( "#sndp" )[ 0 ] );
@@ -517,7 +572,7 @@ QUnit.test( "has(Selector)", function( assert ) {
 	obj = jQuery( "#qunit-fixture" ).has( "#sndp" );
 	assert.deepEqual( obj.get(), q( "qunit-fixture" ), "Keeps elements that have any element matching the selector as a descendant" );
 
-	detached = jQuery( "<a><b><i/></b></a>" );
+	detached = jQuery( "<a><b><i></i></b></a>" );
 	assert.deepEqual( detached.has( "i" ).get(), detached.get(), "...Even when detached" );
 
 	multipleParent = jQuery( "#qunit-fixture, #header" ).has( "#sndp" );
@@ -538,7 +593,7 @@ QUnit.test( "has(Arrayish)", function( assert ) {
 	simple = jQuery( "#qunit-fixture" ).has( jQuery( "#sndp" ) );
 	assert.deepEqual( simple.get(), q( "qunit-fixture" ), "Keeps elements that have any element in the jQuery list as a descendant" );
 
-	detached = jQuery( "<a><b><i/></b></a>" );
+	detached = jQuery( "<a><b><i></i></b></a>" );
 	assert.deepEqual( detached.has( detached.find( "i" ) ).get(), detached.get(), "...Even when detached" );
 
 	multipleParent = jQuery( "#qunit-fixture, #header" ).has( jQuery( "#sndp" ) );
@@ -561,15 +616,19 @@ QUnit.test( "siblings([String])", function( assert ) {
 	assert.expect( 6 );
 	assert.deepEqual( jQuery( "#en" ).siblings().get(), q( "sndp", "sap" ), "Check for siblings" );
 	assert.deepEqual( jQuery( "#nonnodes" ).contents().eq( 1 ).siblings().get(), q( "nonnodesElement" ), "Check for text node siblings" );
-	assert.deepEqual( jQuery( "#foo" ).siblings( "form, b" ).get(), q( "form", "floatTest", "lengthtest", "name-tests", "testForm" ), "Check for multiple filters" );
+	assert.deepEqual(
+		jQuery( "#foo" ).siblings( "form, b" ).get(),
+		q( "form", "floatTest", "lengthtest", "name-tests", "testForm", "disabled-tests" ),
+		"Check for multiple filters"
+	);
 
 	var set = q( "sndp", "en", "sap" );
 	assert.deepEqual( jQuery( "#en, #sndp" ).siblings().get(), set, "Check for unique results from siblings" );
 	assert.deepEqual( jQuery( "#option5a" ).siblings( "option[data-attr]" ).get(), q( "option5c" ), "Has attribute selector in siblings (#9261)" );
-	assert.equal( jQuery( "<a/>" ).siblings().length, 0, "Detached elements have no siblings (#11370)" );
+	assert.equal( jQuery( "<a></a>" ).siblings().length, 0, "Detached elements have no siblings (#11370)" );
 } );
 
-QUnit[ jQuery.find.compile ? "test" : "skip" ]( "siblings([String])", function( assert ) {
+QUnit[ QUnit.jQuerySelectors ? "test" : "skip" ]( "siblings([String])", function( assert ) {
 	assert.expect( 2 );
 	assert.deepEqual( jQuery( "#sndp" ).siblings( ":has(code)" ).get(), q( "sap" ), "Check for filtered siblings (has code child element)" );
 	assert.deepEqual( jQuery( "#sndp" ).siblings( ":has(a)" ).get(), q( "en", "sap" ), "Check for filtered siblings (has anchor child element)" );
@@ -581,7 +640,7 @@ QUnit.test( "children([String])", function( assert ) {
 	assert.deepEqual( jQuery( "#foo" ).children( "#en, #sap" ).get(), q( "en", "sap" ), "Check for multiple filters" );
 } );
 
-QUnit[ jQuery.find.compile ? "test" : "skip" ]( "children([String])", function( assert ) {
+QUnit[ QUnit.jQuerySelectors ? "test" : "skip" ]( "children([String])", function( assert ) {
 	assert.expect( 1 );
 	assert.deepEqual( jQuery( "#foo" ).children( ":has(code)" ).get(), q( "sndp", "sap" ), "Check for filtered children" );
 } );
@@ -733,7 +792,7 @@ QUnit.test( "contents()", function( assert ) {
 
 	assert.equal( jQuery( "div", ibody ).text(), "span text", "Make sure the correct div is still left after deletion in IFrame" );
 
-	jQuery( "<table/>", ibody ).append( "<tr><td>cell</td></tr>" ).appendTo( ibody );
+	jQuery( "<table></table>", ibody ).append( "<tr><td>cell</td></tr>" ).appendTo( ibody );
 	jQuery( "table", ibody ).remove();
 	assert.equal( jQuery( "div", ibody ).length, 1, "Check for JS error on add and delete of a table in IFrame" );
 
@@ -761,7 +820,7 @@ QUnit.test( "contents() for <template />", function( assert ) {
 
 	assert.equal( contents.find( "span" ).text(), "Hello, Web Component!", "Find span in template and check its text" );
 
-	jQuery( "<div id='templateTest' />" ).append(
+	jQuery( "<div id='templateTest'></div>" ).append(
 			jQuery( jQuery.map( contents, function( node ) {
 					return document.importNode( node, true );
 			} ) )
@@ -773,7 +832,7 @@ QUnit.test( "contents() for <template />", function( assert ) {
 	assert.equal( contents.filter( "div" ).length, 3, "Count cloned elements from template" );
 } );
 
-QUnit[ "content" in document.createElement( "template" ) ? "test" : "skip" ]( "contents() for <template /> remains inert", function( assert ) {
+QUnit.testUnlessIE( "contents() for <template /> remains inert", function( assert ) {
 	assert.expect( 2 );
 
 	Globals.register( "testScript" );
@@ -806,6 +865,19 @@ QUnit.test( "contents() for <object />", function( assert ) {
 	} );
 
 	jQuery( "#qunit-fixture" ).append( svgObject );
+} );
+
+QUnit.test( "contents() for <object /> with children", function( assert ) {
+	assert.expect( 1 );
+
+	var object = "<object type='application/x-shockwave-flash' width='200' height='300' id='penguin'>" +
+		"<param name='movie' value='flash/penguin.swf'>" +
+		"<param name='quality' value='high'>" +
+		"<img src='images/penguin.jpg' width='200' height='300' alt='Penguin'>" +
+	"</object>";
+
+	var contents = jQuery( object ).contents();
+	assert.equal( contents.length, 3, "Check object contents children are correct" );
 } );
 
 QUnit.test( "contents() for <frame />", function( assert ) {
@@ -862,7 +934,7 @@ QUnit.test( "add(String selector)", function( assert ) {
 		"Check elements from document"
 	);
 
-	divs = jQuery( "<div/>" ).add( "#sndp" );
+	divs = jQuery( "<div></div>" ).add( "#sndp" );
 	assert.ok( divs[ 0 ].parentNode, "Sort with the disconnected node last (started with disconnected first)." );
 } );
 
@@ -880,7 +952,7 @@ QUnit.test( "add(String html)", function( assert ) {
 	assert.expect( 3 );
 
 	var x,
-		divs = jQuery( "#sndp" ).add( "<div/>" );
+		divs = jQuery( "#sndp" ).add( "<div></div>" );
 
 	assert.ok( !divs[ 1 ].parentNode, "Sort with the disconnected node last." );
 
@@ -893,7 +965,7 @@ QUnit.test( "add(jQuery)", function( assert ) {
 	assert.expect( 4 );
 
 	var x,
-		tmp = jQuery( "<div/>" );
+		tmp = jQuery( "<div></div>" );
 
 	x = jQuery( [] )
 	.add(
@@ -922,7 +994,7 @@ QUnit.test( "add(Element)", function( assert ) {
 	assert.expect( 2 );
 
 	var x,
-		tmp = jQuery( "<div/>" );
+		tmp = jQuery( "<div></div>" );
 
 	x = jQuery( [] ).add( jQuery( "<p id='x1'>xxx</p>" ).appendTo( tmp )[ 0 ] ).add( jQuery( "<p id='x2'>xxx</p>" ).appendTo( tmp )[ 0 ] );
 	assert.equal( x[ 0 ].id, "x1", "Check on-the-fly element1" );

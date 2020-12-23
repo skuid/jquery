@@ -1,52 +1,32 @@
-define( [
-	"./core",
-	"./var/isAttached",
-	"./var/concat",
-	"./var/isFunction",
-	"./var/push",
-	"./core/access",
-	"./manipulation/var/rcheckableType",
-	"./manipulation/var/rtagName",
-	"./manipulation/var/rscriptType",
-	"./manipulation/wrapMap",
-	"./manipulation/getAll",
-	"./manipulation/setGlobalEval",
-	"./manipulation/buildFragment",
-	"./manipulation/support",
+import jQuery from "./core.js";
+import isAttached from "./core/isAttached.js";
+import flat from "./var/flat.js";
+import isIE from "./var/isIE.js";
+import push from "./var/push.js";
+import access from "./core/access.js";
+import rtagName from "./manipulation/var/rtagName.js";
+import rscriptType from "./manipulation/var/rscriptType.js";
+import wrapMap from "./manipulation/wrapMap.js";
+import getAll from "./manipulation/getAll.js";
+import setGlobalEval from "./manipulation/setGlobalEval.js";
+import buildFragment from "./manipulation/buildFragment.js";
+import dataPriv from "./data/var/dataPriv.js";
+import dataUser from "./data/var/dataUser.js";
+import acceptData from "./data/var/acceptData.js";
+import DOMEval from "./core/DOMEval.js";
+import nodeName from "./core/nodeName.js";
 
-	"./data/var/dataPriv",
-	"./data/var/dataUser",
-	"./data/var/acceptData",
-	"./core/DOMEval",
-	"./core/nodeName",
-
-	"./core/init",
-	"./traversing",
-	"./selector",
-	"./event"
-], function( jQuery, isAttached, concat, isFunction, push, access,
-	rcheckableType, rtagName, rscriptType,
-	wrapMap, getAll, setGlobalEval, buildFragment, support,
-	dataPriv, dataUser, acceptData, DOMEval, nodeName ) {
-
-"use strict";
+import "./core/init.js";
+import "./traversing.js";
+import "./selector.js";
+import "./event.js";
 
 var
 
-	/* eslint-disable max-len */
-
-	// See https://github.com/eslint/eslint/issues/3229
-	rxhtmlTag = /<(?!area|br|col|embed|hr|img|input|link|meta|param)(([a-z][^\/\0>\x20\t\r\n\f]*)[^>]*)\/>/gi,
-
-	/* eslint-enable */
-
-	// Support: IE <=10 - 11, Edge 12 - 13 only
-	// In IE/Edge using regex groups here causes severe slowdowns.
-	// See https://connect.microsoft.com/IE/feedback/details/1736512/
+	// Support: IE <=10 - 11+
+	// In IE using regex groups here causes severe slowdowns.
 	rnoInnerhtml = /<script|<style|<link/i,
 
-	// checked="checked" or checked
-	rchecked = /checked\s*(?:[^=]|=\s*.checked.)/i,
 	rcleanScript = /^\s*<!(?:\[CDATA\[|--)|(?:\]\]|--)>\s*$/g;
 
 // Prefer a tbody over its parent table for containing new rows
@@ -76,7 +56,7 @@ function restoreScript( elem ) {
 }
 
 function cloneCopyEvent( src, dest ) {
-	var i, l, type, pdataOld, pdataCur, udataOld, udataCur, events;
+	var i, l, type, pdataOld, udataOld, udataCur, events;
 
 	if ( dest.nodeType !== 1 ) {
 		return;
@@ -84,13 +64,11 @@ function cloneCopyEvent( src, dest ) {
 
 	// 1. Copy private data: events, handlers, etc.
 	if ( dataPriv.hasData( src ) ) {
-		pdataOld = dataPriv.access( src );
-		pdataCur = dataPriv.set( dest, pdataOld );
+		pdataOld = dataPriv.get( src );
 		events = pdataOld.events;
 
 		if ( events ) {
-			delete pdataCur.handle;
-			pdataCur.events = {};
+			dataPriv.remove( dest, "handle events" );
 
 			for ( type in events ) {
 				for ( i = 0, l = events[ type ].length; i < l; i++ ) {
@@ -109,41 +87,22 @@ function cloneCopyEvent( src, dest ) {
 	}
 }
 
-// Fix IE bugs, see support tests
-function fixInput( src, dest ) {
-	var nodeName = dest.nodeName.toLowerCase();
-
-	// Fails to persist the checked state of a cloned checkbox or radio button.
-	if ( nodeName === "input" && rcheckableType.test( src.type ) ) {
-		dest.checked = src.checked;
-
-	// Fails to return the selected option to the default selected state when cloning options
-	} else if ( nodeName === "input" || nodeName === "textarea" ) {
-		dest.defaultValue = src.defaultValue;
-	}
-}
-
 function domManip( collection, args, callback, ignored ) {
 
 	// Flatten any nested arrays
-	args = concat.apply( [], args );
+	args = flat( args );
 
 	var fragment, first, scripts, hasScripts, node, doc,
 		i = 0,
 		l = collection.length,
 		iNoClone = l - 1,
 		value = args[ 0 ],
-		valueIsFunction = isFunction( value );
+		valueIsFunction = typeof value === "function";
 
-	// We can't cloneNode fragments that contain checked, in WebKit
-	if ( valueIsFunction ||
-			( l > 1 && typeof value === "string" &&
-				!support.checkClone && rchecked.test( value ) ) ) {
+	if ( valueIsFunction ) {
 		return collection.each( function( index ) {
 			var self = collection.eq( index );
-			if ( valueIsFunction ) {
-				args[ 0 ] = value.call( this, index, self.html() );
-			}
+			args[ 0 ] = value.call( this, index, self.html() );
 			domManip( self, args, callback, ignored );
 		} );
 	}
@@ -172,9 +131,6 @@ function domManip( collection, args, callback, ignored ) {
 
 					// Keep references to cloned scripts for later restoration
 					if ( hasScripts ) {
-
-						// Support: Android <=4.0 only, PhantomJS 1 only
-						// push.apply(_, arraylike) throws on ancient WebKit
 						jQuery.merge( scripts, getAll( node, "script" ) );
 					}
 				}
@@ -198,11 +154,14 @@ function domManip( collection, args, callback, ignored ) {
 						if ( node.src && ( node.type || "" ).toLowerCase()  !== "module" ) {
 
 							// Optional AJAX dependency, but won't run scripts if not present
-							if ( jQuery._evalUrl ) {
-								jQuery._evalUrl( node.src );
+							if ( jQuery._evalUrl && !node.noModule ) {
+								jQuery._evalUrl( node.src, {
+									nonce: node.nonce,
+									crossOrigin: node.crossOrigin
+								}, doc );
 							}
 						} else {
-							DOMEval( node.textContent.replace( rcleanScript, "" ), doc, node );
+							DOMEval( node.textContent.replace( rcleanScript, "" ), node, doc );
 						}
 					}
 				}
@@ -236,7 +195,7 @@ function remove( elem, selector, keepData ) {
 
 jQuery.extend( {
 	htmlPrefilter: function( html ) {
-		return html.replace( rxhtmlTag, "<$1></$2>" );
+		return html;
 	},
 
 	clone: function( elem, dataAndEvents, deepDataAndEvents ) {
@@ -245,15 +204,22 @@ jQuery.extend( {
 			inPage = isAttached( elem );
 
 		// Fix IE cloning issues
-		if ( !support.noCloneChecked && ( elem.nodeType === 1 || elem.nodeType === 11 ) &&
+		if ( isIE && ( elem.nodeType === 1 || elem.nodeType === 11 ) &&
 				!jQuery.isXMLDoc( elem ) ) {
 
-			// We eschew Sizzle here for performance reasons: https://jsperf.com/getall-vs-sizzle/2
+			// We eschew jQuery#find here for performance reasons:
+			// https://jsperf.com/getall-vs-sizzle/2
 			destElements = getAll( clone );
 			srcElements = getAll( elem );
 
 			for ( i = 0, l = srcElements.length; i < l; i++ ) {
-				fixInput( srcElements[ i ], destElements[ i ] );
+
+				// Support: IE <=11+
+				// IE fails to set the defaultValue to the correct value when
+				// cloning textareas.
+				if ( nodeName( destElements[ i ], "textarea" ) ) {
+					destElements[ i ].defaultValue = srcElements[ i ].defaultValue;
+				}
 			}
 		}
 
@@ -473,9 +439,6 @@ jQuery.each( {
 		for ( ; i <= last; i++ ) {
 			elems = i === last ? this : this.clone( true );
 			jQuery( insert[ i ] )[ original ]( elems );
-
-			// Support: Android <=4.0 only, PhantomJS 1 only
-			// .get() because push.apply(_, arraylike) throws on ancient WebKit
 			push.apply( ret, elems.get() );
 		}
 
@@ -483,5 +446,4 @@ jQuery.each( {
 	};
 } );
 
-return jQuery;
-} );
+export default jQuery;

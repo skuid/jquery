@@ -1,11 +1,7 @@
-define( [
-	"../core",
-	"../core/camelCase",
-	"../var/rnothtmlwhite",
-	"./var/acceptData"
-], function( jQuery, camelCase, rnothtmlwhite, acceptData ) {
-
-"use strict";
+import jQuery from "../core.js";
+import camelCase from "../core/camelCase.js";
+import rnothtmlwhite from "../var/rnothtmlwhite.js";
+import acceptData from "./var/acceptData.js";
 
 function Data() {
 	this.expando = jQuery.expando + Data.uid++;
@@ -22,7 +18,7 @@ Data.prototype = {
 
 		// If not, create one
 		if ( !value ) {
-			value = {};
+			value = Object.create( null );
 
 			// We can accept data for non-element nodes in modern browsers,
 			// but we should not, see #8335.
@@ -141,7 +137,7 @@ Data.prototype = {
 		// Remove the expando if there's no more data
 		if ( key === undefined || jQuery.isEmptyObject( cache ) ) {
 
-			// Support: Chrome <=35 - 45
+			// Support: Chrome <=35 - 45+
 			// Webkit & Blink performance suffers when deleting properties
 			// from DOM nodes, so set to undefined instead
 			// https://bugs.chromium.org/p/chromium/issues/detail?id=378607 (bug restricted)
@@ -158,5 +154,4 @@ Data.prototype = {
 	}
 };
 
-return Data;
-} );
+export default Data;

@@ -16,7 +16,7 @@ class MockServer {
 			header( 'Content-type: text/javascript' );
 		} else {
 			header( 'Content-type: text/html' );
-			echo 'ERROR <script>ok( true, "mock executed" );</script>';
+			echo 'ERROR <script>QUnit.assert.ok( true, "mock executed" );</script>';
 		}
 	}
 
@@ -54,7 +54,21 @@ class MockServer {
 		} else {
 			header( 'Content-type: text/html' );
 		}
-		echo 'ok( true, "mock executed" );';
+
+		if ( !empty( $req->query['cors'] ) ) {
+			header( "Access-Control-Allow-Origin: *" );
+		}
+
+		if ( !empty( $req->query['callback'] ) ) {
+			$headers = array_combine(
+				array_map( 'strtolower', array_keys( $req->headers ) ),
+				array_values( $req->headers )
+			);
+
+			echo $req->query['callback'] . "(" . json_encode( [ 'headers' => $headers ] ) . ")";
+		} else {
+			echo 'QUnit.assert.ok( true, "mock executed" );';
+		}
 	}
 
 	// Used to be in test.js, but was renamed to testbar.php
@@ -62,12 +76,16 @@ class MockServer {
 	protected function testbar( $req ) {
 		echo 'this.testBar = "bar";
 jQuery("#ap").html("bar");
-ok( true, "mock executed");';
+QUnit.assert.ok( true, "mock executed");';
 	}
 
 	protected function json( $req ) {
 		if ( isset( $req->query['header'] ) ) {
 			header( 'Content-type: application/json' );
+		}
+
+		if ( isset( $req->query['cors'] ) ) {
+			header( 'Access-Control-Allow-Origin: *' );
 		}
 
 		if ( isset( $req->query['array'] ) ) {
@@ -114,6 +132,9 @@ ok( true, "mock executed");';
 		header( 'Sample-Header: Hello World' );
 		header( 'Empty-Header: ' );
 		header( 'Sample-Header2: Hello World 2' );
+		header( 'List-Header: Item 1' );
+		header( 'list-header: Item 2', FALSE );
+		header( 'constructor: prototype collision (constructor)' );
 
 		foreach ( explode( '|' , $req->query[ 'keys' ] ) as $key ) {
 			// Only echo if key exists in the header
@@ -188,11 +209,22 @@ ok( true, "mock executed");';
 	}
 
 	protected function cspFrame( $req ) {
-		// This is CSP only for browsers with "Content-Security-Policy" header support
-		// i.e. no old WebKit or old Firefox
 		header( "Content-Security-Policy: default-src 'self'; report-uri ./mock.php?action=cspLog" );
 		header( 'Content-type: text/html' );
 		echo file_get_contents( __DIR__ . '/csp.include.html' );
+	}
+
+	protected function cspNonce( $req ) {
+		$test = $req->query['test'] ? '-' . $req->query['test'] : '';
+		header( "Content-Security-Policy: script-src 'nonce-jquery+hardcoded+nonce'; report-uri ./mock.php?action=cspLog" );
+		header( 'Content-type: text/html' );
+		echo file_get_contents( __DIR__ . '/csp-nonce' . $test . '.html' );
+	}
+
+	protected function cspAjaxScript( $req ) {
+		header( "Content-Security-Policy: script-src 'self'; report-uri /base/test/data/mock.php?action=cspLog" );
+		header( 'Content-type: text/html' );
+		echo file_get_contents( __DIR__ . '/csp-ajax-script.html' );
 	}
 
 	protected function cspLog( $req ) {
@@ -202,6 +234,19 @@ ok( true, "mock executed");';
 	protected function cspClean( $req ) {
 		file_put_contents( $this->cspFile, '' );
 		unlink( $this->cspFile );
+	}
+
+	protected function errorWithScript( $req ) {
+		header( 'HTTP/1.0 404 Not Found' );
+		if ( isset( $req->query['withScriptContentType'] ) ) {
+			header( 'Content-Type: application/javascript' );
+		}
+		if ( isset( $req->query['callback'] ) ) {
+			$callback = $req->query['callback'];
+			echo $callback . '( {"status": 404, "msg": "Not Found"} )';
+		} else {
+			echo 'QUnit.assert.ok( false, "Mock return erroneously executed" );';
+		}
 	}
 
 	public function __construct() {

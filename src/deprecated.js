@@ -1,37 +1,8 @@
-define( [
-	"./core",
-	"./core/nodeName",
-	"./core/camelCase",
-	"./core/toType",
-	"./var/isFunction",
-	"./var/isWindow",
-	"./var/slice",
+import jQuery from "./core.js";
+import slice from "./var/slice.js";
 
-	"./event/alias"
-], function( jQuery, nodeName, camelCase, toType, isFunction, isWindow, slice ) {
-
-"use strict";
-
-jQuery.fn.extend( {
-
-	bind: function( types, data, fn ) {
-		return this.on( types, null, data, fn );
-	},
-	unbind: function( types, fn ) {
-		return this.off( types, null, fn );
-	},
-
-	delegate: function( selector, types, data, fn ) {
-		return this.on( types, selector, data, fn );
-	},
-	undelegate: function( selector, types, fn ) {
-
-		// ( namespace ) or ( selector, types [, fn] )
-		return arguments.length === 1 ?
-			this.off( selector, "**" ) :
-			this.off( types, selector || "**", fn );
-	}
-} );
+import "./deprecated/ajax-event-alias.js";
+import "./deprecated/event.js";
 
 // Bind a function to a context, optionally partially applying any
 // arguments.
@@ -48,7 +19,7 @@ jQuery.proxy = function( fn, context ) {
 
 	// Quick check to determine if target is callable, in the spec
 	// this throws a TypeError, but we will just return undefined.
-	if ( !isFunction( fn ) ) {
+	if ( typeof fn !== "function" ) {
 		return undefined;
 	}
 
@@ -71,28 +42,3 @@ jQuery.holdReady = function( hold ) {
 		jQuery.ready( true );
 	}
 };
-jQuery.isArray = Array.isArray;
-jQuery.parseJSON = JSON.parse;
-jQuery.nodeName = nodeName;
-jQuery.isFunction = isFunction;
-jQuery.isWindow = isWindow;
-jQuery.camelCase = camelCase;
-jQuery.type = toType;
-
-jQuery.now = Date.now;
-
-jQuery.isNumeric = function( obj ) {
-
-	// As of jQuery 3.0, isNumeric is limited to
-	// strings and numbers (primitives or objects)
-	// that can be coerced to finite numbers (gh-2662)
-	var type = jQuery.type( obj );
-	return ( type === "number" || type === "string" ) &&
-
-		// parseFloat NaNs numeric-cast false positives ("")
-		// ...but misinterprets leading-number strings, particularly hex literals ("0x...")
-		// subtraction forces infinities to NaN
-		!isNaN( obj - parseFloat( obj ) );
-};
-
-} );

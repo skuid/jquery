@@ -1,4 +1,4 @@
-QUnit.module( "serialize", { teardown: moduleTeardown } );
+QUnit.module( "serialize", { afterEach: moduleTeardown } );
 
 QUnit.test( "jQuery.param()", function( assert ) {
 	assert.expect( 24 );
@@ -77,7 +77,7 @@ QUnit.test( "jQuery.param()", function( assert ) {
 	assert.equal( jQuery.param( params ), "", "jQuery.param( undefined ) === empty string" );
 } );
 
-QUnit.test( "jQuery.param() not affected by ajaxSettings", function( assert ) {
+QUnit[ jQuery.ajax ? "test" : "skip" ]( "jQuery.param() not affected by ajaxSettings", function( assert ) {
 	assert.expect( 1 );
 
 	var oldTraditional = jQuery.ajaxSettings.traditional;

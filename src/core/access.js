@@ -1,10 +1,5 @@
-define( [
-	"../core",
-	"../core/toType",
-	"../var/isFunction"
-], function( jQuery, toType, isFunction ) {
-
-"use strict";
+import jQuery from "../core.js";
+import toType from "../core/toType.js";
 
 // Multifunctional method to get and set values of a collection
 // The value/s can optionally be executed if it's a function
@@ -24,7 +19,7 @@ var access = function( elems, fn, key, value, chainable, emptyGet, raw ) {
 	} else if ( value !== undefined ) {
 		chainable = true;
 
-		if ( !isFunction( value ) ) {
+		if ( typeof value !== "function" ) {
 			raw = true;
 		}
 
@@ -38,7 +33,7 @@ var access = function( elems, fn, key, value, chainable, emptyGet, raw ) {
 			// ...except when executing function values
 			} else {
 				bulk = fn;
-				fn = function( elem, key, value ) {
+				fn = function( elem, _key, value ) {
 					return bulk.call( jQuery( elem ), value );
 				};
 			}
@@ -48,8 +43,8 @@ var access = function( elems, fn, key, value, chainable, emptyGet, raw ) {
 			for ( ; i < len; i++ ) {
 				fn(
 					elems[ i ], key, raw ?
-					value :
-					value.call( elems[ i ], i, fn( elems[ i ], key ) )
+						value :
+						value.call( elems[ i ], i, fn( elems[ i ], key ) )
 				);
 			}
 		}
@@ -67,6 +62,4 @@ var access = function( elems, fn, key, value, chainable, emptyGet, raw ) {
 	return len ? fn( elems[ 0 ], key ) : emptyGet;
 };
 
-return access;
-
-} );
+export default access;

@@ -1,11 +1,8 @@
-define( [
-	"../core",
-	"../css/finalPropName",
+import jQuery from "../core.js";
+import isAutoPx from "../css/isAutoPx.js";
+import finalPropName from "../css/finalPropName.js";
 
-	"../css"
-], function( jQuery, finalPropName ) {
-
-"use strict";
+import "../css.js";
 
 function Tween( elem, options, prop, end, easing ) {
 	return new Tween.prototype.init( elem, options, prop, end, easing );
@@ -21,7 +18,7 @@ Tween.prototype = {
 		this.options = options;
 		this.start = this.now = this.cur();
 		this.end = end;
-		this.unit = unit || ( jQuery.cssNumber[ prop ] ? "" : "px" );
+		this.unit = unit || ( isAutoPx( prop ) ? "px" : "" );
 	},
 	cur: function() {
 		var hooks = Tween.propHooks[ this.prop ];
@@ -87,22 +84,12 @@ Tween.propHooks = {
 			if ( jQuery.fx.step[ tween.prop ] ) {
 				jQuery.fx.step[ tween.prop ]( tween );
 			} else if ( tween.elem.nodeType === 1 && (
-					jQuery.cssHooks[ tween.prop ] ||
+				jQuery.cssHooks[ tween.prop ] ||
 					tween.elem.style[ finalPropName( tween.prop ) ] != null ) ) {
 				jQuery.style( tween.elem, tween.prop, tween.now + tween.unit );
 			} else {
 				tween.elem[ tween.prop ] = tween.now;
 			}
-		}
-	}
-};
-
-// Support: IE <=9 only
-// Panic based approach to setting things on disconnected nodes
-Tween.propHooks.scrollTop = Tween.propHooks.scrollLeft = {
-	set: function( tween ) {
-		if ( tween.elem.nodeType && tween.elem.parentNode ) {
-			tween.elem[ tween.prop ] = tween.now;
 		}
 	}
 };
@@ -121,5 +108,3 @@ jQuery.fx = Tween.prototype.init;
 
 // Back compat <1.8 extension point
 jQuery.fx.step = {};
-
-} );

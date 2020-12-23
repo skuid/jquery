@@ -1,15 +1,12 @@
-define( [
-	"../core",
-	"../core/toType",
-	"../var/isAttached",
-	"./var/rtagName",
-	"./var/rscriptType",
-	"./wrapMap",
-	"./getAll",
-	"./setGlobalEval"
-], function( jQuery, toType, isAttached, rtagName, rscriptType, wrapMap, getAll, setGlobalEval ) {
-
-"use strict";
+import jQuery from "../core.js";
+import toType from "../core/toType.js";
+import isAttached from "../core/isAttached.js";
+import arr from "../var/arr.js";
+import rtagName from "./var/rtagName.js";
+import rscriptType from "./var/rscriptType.js";
+import wrapMap from "./wrapMap.js";
+import getAll from "./getAll.js";
+import setGlobalEval from "./setGlobalEval.js";
 
 var rhtml = /<|&#?\w+;/;
 
@@ -27,9 +24,6 @@ function buildFragment( elems, context, scripts, selection, ignored ) {
 
 			// Add nodes directly
 			if ( toType( elem ) === "object" ) {
-
-				// Support: Android <=4.0 only, PhantomJS 1 only
-				// push.apply(_, arraylike) throws on ancient WebKit
 				jQuery.merge( nodes, elem.nodeType ? [ elem ] : elem );
 
 			// Convert non-html into a text node
@@ -42,17 +36,16 @@ function buildFragment( elems, context, scripts, selection, ignored ) {
 
 				// Deserialize a standard representation
 				tag = ( rtagName.exec( elem ) || [ "", "" ] )[ 1 ].toLowerCase();
-				wrap = wrapMap[ tag ] || wrapMap._default;
-				tmp.innerHTML = wrap[ 1 ] + jQuery.htmlPrefilter( elem ) + wrap[ 2 ];
+				wrap = wrapMap[ tag ] || arr;
 
-				// Descend through wrappers to the right content
-				j = wrap[ 0 ];
-				while ( j-- ) {
-					tmp = tmp.lastChild;
+				// Create wrappers & descend into them.
+				j = wrap.length;
+				while ( --j > -1 ) {
+					tmp = tmp.appendChild( context.createElement( wrap[ j ] ) );
 				}
 
-				// Support: Android <=4.0 only, PhantomJS 1 only
-				// push.apply(_, arraylike) throws on ancient WebKit
+				tmp.innerHTML = jQuery.htmlPrefilter( elem );
+
 				jQuery.merge( nodes, tmp.childNodes );
 
 				// Remember the top-level container
@@ -102,5 +95,4 @@ function buildFragment( elems, context, scripts, selection, ignored ) {
 	return fragment;
 }
 
-return buildFragment;
-} );
+export default buildFragment;
