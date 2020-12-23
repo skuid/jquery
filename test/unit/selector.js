@@ -1,4 +1,4 @@
-QUnit.module( "selector", { teardown: moduleTeardown } );
+QUnit.module( "selector", { afterEach: moduleTeardown } );
 
 /**
  * This test page is for selector tests that require jQuery in order to do the selection
@@ -92,7 +92,7 @@ QUnit.test( "name", function( assert ) {
 QUnit.test( "selectors with comma", function( assert ) {
 	assert.expect( 4 );
 
-	var fixture = jQuery( "<div><h2><span/></h2><div><p><span/></p><p/></div></div>" );
+	var fixture = jQuery( "<div><h2><span></span></h2><div><p><span></span></p><p></p></div></div>" );
 
 	assert.equal( fixture.find( "h2, div p" ).filter( "p" ).length, 2, "has to find two <p>" );
 	assert.equal( fixture.find( "h2, div p" ).filter( "h2" ).length, 1, "has to find one <h2>" );
@@ -275,7 +275,7 @@ QUnit.test( "attributes", function( assert ) {
 QUnit.test( "disconnected nodes", function( assert ) {
 	assert.expect( 1 );
 
-	var $div = jQuery( "<div/>" );
+	var $div = jQuery( "<div></div>" );
 	assert.equal( $div.is( "div" ), true, "Make sure .is('nodeName') works on disconnected nodes." );
 } );
 
@@ -503,11 +503,13 @@ testIframe(
 	}
 );
 
-QUnit.asyncTest( "Iframe dispatch should not affect jQuery (#13936)", 1, function( assert ) {
+QUnit.test( "Iframe dispatch should not affect jQuery (#13936)", function( assert ) {
+	assert.expect( 1 );
 	var loaded = false,
 		thrown = false,
 		iframe = document.getElementById( "iframe" ),
-		iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+		iframeDoc = iframe.contentDocument || iframe.contentWindow.document,
+		done = assert.async();
 
 	jQuery( iframe ).on( "load", function() {
 		var form;
@@ -525,7 +527,7 @@ QUnit.asyncTest( "Iframe dispatch should not affect jQuery (#13936)", 1, functio
 			// clean up
 			jQuery( iframe ).off();
 
-			QUnit.start();
+			done();
 		} else {
 			loaded = true;
 			form.submit();

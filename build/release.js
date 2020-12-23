@@ -1,22 +1,26 @@
+"use strict";
+
 var fs = require( "fs" );
 
 module.exports = function( Release ) {
 
-	var
-		files = [
-			"dist/jquery.js",
-			"dist/jquery.min.js",
-			"dist/jquery.min.map",
-			"dist/jquery.slim.js",
-			"dist/jquery.slim.min.js",
-			"dist/jquery.slim.min.map",
-			"src/core.js"
-		],
-		cdn = require( "./release/cdn" ),
-		dist = require( "./release/dist" ),
-		ensureSizzle = require( "./release/ensure-sizzle" ),
+	const distFiles = [
+		"dist/jquery.js",
+		"dist/jquery.min.js",
+		"dist/jquery.min.map",
+		"dist/jquery.slim.js",
+		"dist/jquery.slim.min.js",
+		"dist/jquery.slim.min.map"
+	];
+	const filesToCommit = [
+		...distFiles,
+		"src/core.js"
+	];
+	const cdn = require( "./release/cdn" );
+	const dist = require( "./release/dist" );
+	const ensureSizzle = require( "./release/ensure-sizzle" );
 
-		npmTags = Release.npmTags;
+	const npmTags = Release.npmTags;
 
 	Release.define( {
 		npmPublish: true,
@@ -49,13 +53,13 @@ module.exports = function( Release ) {
 		generateArtifacts: function( callback ) {
 			Release.exec( "grunt", "Grunt command failed" );
 			Release.exec(
-				"grunt custom:-ajax,-effects,-deprecated --filename=jquery.slim.js && " +
+				"grunt custom:slim --filename=jquery.slim.js && " +
 					"grunt remove_map_comment --filename=jquery.slim.js",
 				"Grunt custom failed"
 			);
 			cdn.makeReleaseCopies( Release );
 			Release._setSrcVersion();
-			callback( files );
+			callback( filesToCommit );
 		},
 
 		/**
@@ -76,15 +80,16 @@ module.exports = function( Release ) {
 		 */
 		dist: function( callback ) {
 			cdn.makeArchives( Release, function() {
-				dist( Release, files, callback );
+				dist( Release, distFiles, callback );
 			} );
 		}
 	} );
 };
 
 module.exports.dependencies = [
-	"archiver@0.14.2",
-	"shelljs@0.7.0",
-	"npm@2.3.0",
-	"chalk@1.1.1"
+	"archiver@1.3.0",
+	"shelljs@0.7.7",
+	"inquirer@7.0.4",
+	"npm@4.4.1",
+	"chalk@1.1.3"
 ];
