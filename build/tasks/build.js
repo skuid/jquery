@@ -4,10 +4,9 @@
  * and includes/excludes specified modules
  */
 
+"use strict";
+
 module.exports = function( grunt ) {
-
-	"use strict";
-
 	var fs = require( "fs" ),
 		requirejs = require( "requirejs" ),
 		Insight = require( "insight" ),
@@ -17,7 +16,11 @@ module.exports = function( grunt ) {
 		read = function( fileName ) {
 			return grunt.file.read( srcFolder + fileName );
 		},
-		wrapper = read( "wrapper.js" ).split( /\/\/ \@CODE\n\/\/[^\n]+/ ),
+
+		// Catch `// @CODE` and subsequent comment lines event if they don't start
+		// in the first column.
+		wrapper = read( "wrapper.js" ).split( /[\x20\t]*\/\/ @CODE\n(?:[\x20\t]*\/\/[^\n]+\n)*/ ),
+
 		config = {
 			baseUrl: "src",
 			name: "jquery",
@@ -61,7 +64,7 @@ module.exports = function( grunt ) {
 		if ( /.\/var\//.test( path.replace( process.cwd(), "" ) ) ) {
 			contents = contents
 				.replace(
-					/define\([\w\W]*?return/,
+					/define\(\s*(["'])[\w\W]*?\1[\w\W]*?return/,
 					"var " +
 					( /var\/([\w-]+)/.exec( name )[ 1 ] ) +
 					" ="
@@ -330,9 +333,27 @@ module.exports = function( grunt ) {
 	// Becomes:
 	//
 	//   grunt build:*:*:+ajax:-dimensions:-effects:-offset
+	//
+	// There's also a special "slim" alias that resolves to the jQuery Slim build
+	// configuration:
+	//
+	//   grunt custom:slim
 	grunt.registerTask( "custom", function() {
 		var args = this.args,
-			modules = args.length ? args[ 0 ].replace( /,/g, ":" ) : "",
+			modules = args.length ?
+				args[ 0 ]
+					.split( "," )
+
+					// Replace "slim" with respective exclusions meant for
+					// the official slim build
+					.reduce( ( acc, elem ) => acc.concat(
+						elem === "slim" ?
+							[ "-ajax", "-effects" ] :
+							[ elem ]
+					), [] )
+
+					.join( ":" ) :
+				"",
 			done = this.async(),
 			insight = new Insight( {
 				trackingCode: "UA-1076265-4",
@@ -368,7 +389,7 @@ module.exports = function( grunt ) {
 
 		// Ask for permission the first time
 		if ( insight.optOut === undefined ) {
-			insight.askPermission( null, function( error, result ) {
+			insight.askPermission( null, function( _error, result ) {
 				exec( result );
 			} );
 		} else {

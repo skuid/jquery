@@ -5,11 +5,11 @@ if ( !jQuery.fn.wrap ) { // no wrap module
 }
 
 QUnit.module( "wrap", {
-	teardown: moduleTeardown
+	afterEach: moduleTeardown
 } );
 
 // See test/unit/manipulation.js for explanation about these 2 functions
-function manipulationBareObj( value ) {
+function manipulationBareObj( value ) {
 	return value;
 }
 
@@ -74,7 +74,7 @@ function testWrap( val, assert ) {
 		cacheLength++;
 	}
 
-	j = jQuery( "<label/>" ).wrap( val( "<li/>" ) );
+	j = jQuery( "<label></label>" ).wrap( val( "<li></li>" ) );
 	assert.equal(
 		j[ 0 ] .nodeName.toUpperCase(), "LABEL", "Element is a label"
 	);
@@ -90,7 +90,7 @@ function testWrap( val, assert ) {
 	);
 
 	// Wrap an element containing a text node
-	j = jQuery( "<span/>" ).wrap( "<div>test</div>" );
+	j = jQuery( "<span></span>" ).wrap( "<div>test</div>" );
 	assert.equal(
 		j[ 0 ].previousSibling.nodeType, 3, "Make sure the previous node is a text element"
 	);
@@ -112,7 +112,7 @@ function testWrap( val, assert ) {
 	);
 
 	// Wrap an element with a jQuery set
-	j = jQuery( "<span/>" ).wrap( jQuery( "<div></div>" ) );
+	j = jQuery( "<span></span>" ).wrap( jQuery( "<div></div>" ) );
 	assert.equal(
 		j[ 0 ].parentNode.nodeName.toLowerCase(), "div", "Wrapping works."
 	);
@@ -128,7 +128,7 @@ function testWrap( val, assert ) {
 		jQuery( this ).off();
 	} );
 
-	j = jQuery( "<span/>" ).wrap( result );
+	j = jQuery( "<span></span>" ).wrap( result );
 	assert.equal(
 		j[ 0 ].parentNode.nodeName.toLowerCase(), "div", "Wrapping works."
 	);
@@ -313,7 +313,7 @@ QUnit.test( "wrapInner(Element)", function( assert ) {
 	assert.expect( 5 );
 
 	var num,
-		div = jQuery( "<div/>" );
+		div = jQuery( "<div></div>" );
 
 	num = jQuery( "#first" ).children().length;
 	jQuery( "#first" ).wrapInner( document.getElementById( "empty" ) );
@@ -375,7 +375,7 @@ QUnit.test( "wrapInner(Function) returns Element", function( assert ) {
 
 	var num,
     val = manipulationFunctionReturningObj,
-		div = jQuery( "<div/>" );
+		div = jQuery( "<div></div>" );
 
 	num = jQuery( "#first" ).children().length;
 	jQuery( "#first" ).wrapInner( val( document.getElementById( "empty" ) ) );
@@ -522,7 +522,7 @@ QUnit.test( "wrapping scripts (#10470)", function( assert ) {
 
 	var script = document.createElement( "script" );
 	script.text = script.textContent =
-		"ok( !document.eval10470, 'script evaluated once' ); document.eval10470 = true;";
+		"QUnit.assert.ok( !document.eval10470, 'script evaluated once' ); document.eval10470 = true;";
 
 	document.eval10470 = false;
 	jQuery( "#qunit-fixture" ).empty()[ 0 ].appendChild( script );

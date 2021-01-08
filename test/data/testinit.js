@@ -1,6 +1,17 @@
 /* eslint no-multi-str: "off" */
 
-var baseURL = "",
+var FILEPATH = "/test/data/testinit.js",
+	activeScript = [].slice.call( document.getElementsByTagName( "script" ), -1 )[ 0 ],
+	parentUrl = activeScript && activeScript.src ?
+		activeScript.src.replace( /[?#].*/, "" ) + FILEPATH.replace( /[^/]+/g, ".." ) + "/" :
+		"../",
+
+	// baseURL is intentionally set to "data/" instead of "".
+	// This is not just for convenience (since most files are in data/)
+	// but also to ensure that urls without prefix fail.
+	// Otherwise it's easy to write tests that pass on test/index.html
+	// but fail in Karma runner (where the baseURL is different).
+	baseURL = parentUrl + "test/data/",
 	supportjQuery = this.jQuery,
 
 	// see RFC 2606
@@ -37,7 +48,7 @@ this.q = function() {
  * @param {(String|Node)=document} context - Selector context
  * @example match("Check for something", "p", ["foo", "bar"]);
  */
-function match( message, selector, expectedIds, context ) {
+function match( message, selector, expectedIds, context, assert ) {
 	var f = jQuery( selector, context ).get(),
 		s = "",
 		i = 0;
@@ -46,7 +57,7 @@ function match( message, selector, expectedIds, context ) {
 		s += ( s && "," ) + "\"" + f[ i ].id + "\"";
 	}
 
-	this.deepEqual( f, q.apply( q, expectedIds ), message + " (" + selector + ")" );
+	assert.deepEqual( f, q.apply( q, expectedIds ), message + " (" + selector + ")" );
 }
 
 /**
@@ -58,7 +69,7 @@ function match( message, selector, expectedIds, context ) {
  * @example t("Check for something", "p", ["foo", "bar"]);
  */
 QUnit.assert.t = function( message, selector, expectedIds ) {
-	match( message, selector, expectedIds, undefined );
+	match( message, selector, expectedIds, undefined, QUnit.assert );
 };
 
 /**
@@ -70,7 +81,7 @@ QUnit.assert.t = function( message, selector, expectedIds ) {
  * @example selectInFixture("Check for something", "p", ["foo", "bar"]);
  */
 QUnit.assert.selectInFixture = function( message, selector, expectedIds ) {
-	match( message, selector, expectedIds, "#qunit-fixture" );
+	match( message, selector, expectedIds, "#qunit-fixture", QUnit.assert );
 };
 
 this.createDashboardXML = function() {
@@ -148,11 +159,13 @@ window.fireNative = document.createEvent ?
 /**
  * Add random number to url to stop caching
  *
- * @example url("data/test.html")
- * @result "data/test.html?10538358428943"
+ * Also prefixes with baseURL automatically.
  *
- * @example url("data/test.php?foo=bar")
- * @result "data/test.php?foo=bar&10538358345554"
+ * @example url("index.html")
+ * @result "data/index.html?10538358428943"
+ *
+ * @example url("mock.php?foo=bar")
+ * @result "data/mock.php?foo=bar&10538358345554"
  */
 function url( value ) {
 	return baseURL + value + ( /\?/.test( value ) ? "&" : "?" ) +
@@ -161,15 +174,16 @@ function url( value ) {
 
 // Ajax testing helper
 this.ajaxTest = function( title, expect, options ) {
-	QUnit.test( title, expect, function( assert ) {
+	QUnit.test( title, function( assert ) {
+		assert.expect( expect );
 		var requestOptions;
 
-		if ( jQuery.isFunction( options ) ) {
+		if ( typeof options === "function" ) {
 			options = options( assert );
 		}
 		options = options || [];
 		requestOptions = options.requests || options.request || options;
-		if ( !jQuery.isArray( requestOptions ) ) {
+		if ( !Array.isArray( requestOptions ) ) {
 			requestOptions = [ requestOptions ];
 		}
 
@@ -201,7 +215,7 @@ this.ajaxTest = function( title, expect, options ) {
 							if ( !completed ) {
 								if ( !handler ) {
 									assert.ok( false, "unexpected " + status );
-								} else if ( jQuery.isFunction( handler ) ) {
+								} else if ( typeof handler === "function" ) {
 									handler.apply( this, arguments );
 								}
 							}
@@ -231,42 +245,87 @@ this.ajaxTest = function( title, expect, options ) {
 	} );
 };
 
-this.testIframe = function( title, fileName, func ) {
-	QUnit.test( title, function( assert ) {
-		var iframe;
-		var done = assert.async();
+this.testIframe = function( title, fileName, func, wrapper ) {
+	if ( !wrapper ) {
+		wrapper = QUnit.test;
+	}
+	wrapper.call( QUnit, title, function( assert ) {
+		var done = assert.async(),
+			$iframe = supportjQuery( "<iframe></iframe>" )
+				.css( { position: "absolute", top: "0", left: "-600px", width: "500px" } )
+				.attr( { id: "qunit-fixture-iframe", src: url( fileName ) } );
 
+		// Test iframes are expected to invoke this via startIframeTest (cf. iframeTest.js)
 		window.iframeCallback = function() {
 			var args = Array.prototype.slice.call( arguments );
 
 			args.unshift( assert );
 
 			setTimeout( function() {
+				var result;
+
 				this.iframeCallback = undefined;
 
-				func.apply( this, args );
-				func = function() {};
-				iframe.remove();
-				done();
+				result = func.apply( this, args );
+
+				function finish() {
+					func = function() {};
+					$iframe.remove();
+					done();
+				}
+
+				// Wait for promises returned by `func`.
+				if ( result && result.then ) {
+					result.then( finish );
+				} else {
+					finish();
+				}
 			} );
 		};
-		iframe = jQuery( "<div/>" ).css( { position: "absolute", width: "500px", left: "-600px" } )
-			.append( jQuery( "<iframe/>" ).attr( "src", url( "./data/" + fileName ) ) )
-			.appendTo( "#qunit-fixture" );
+
+		// Attach iframe to the body for visibility-dependent code
+		// It will be removed by either the above code, or the testDone callback in testrunner.js
+		$iframe.prependTo( document.body );
 	} );
 };
 this.iframeCallback = undefined;
 
 // Tests are always loaded async
-QUnit.config.autostart = false;
+// except when running tests in Karma (See Gruntfile)
+if ( !window.__karma__ ) {
+	QUnit.config.autostart = false;
+}
+
+// Leverage QUnit URL parsing to detect testSwarm environment and "basic" testing mode
+QUnit.isSwarm = ( QUnit.urlParams.swarmURL + "" ).indexOf( "http" ) === 0;
+QUnit.basicTests = ( QUnit.urlParams.module + "" ) === "basic";
+
+// Async test for module script type support
+function moduleTypeSupported() {
+	var script = document.createElement( "script" );
+	script.type = "module";
+	script.text = "QUnit.moduleTypeSupported = true";
+	document.head.appendChild( script ).parentNode.removeChild( script );
+}
+moduleTypeSupported();
+
 this.loadTests = function() {
 
-	// Leverage QUnit URL parsing to detect testSwarm environment and "basic" testing mode
-	QUnit.isSwarm = ( QUnit.urlParams.swarmURL + "" ).indexOf( "http" ) === 0;
-	QUnit.basicTests = ( QUnit.urlParams.module + "" ) === "basic";
+	// QUnit.config is populated from QUnit.urlParams but only at the beginning
+	// of the test run. We need to read both.
+	var amd = QUnit.config.amd || QUnit.urlParams.amd;
+
+	// Directly load tests that need evaluation before DOMContentLoaded.
+	if ( !amd || document.readyState === "loading" ) {
+		document.write( "<script src='" + parentUrl + "test/unit/ready.js'><\x2Fscript>" );
+	} else {
+		QUnit.module( "ready", function() {
+			QUnit.skip( "jQuery ready tests skipped in async mode", function() {} );
+		} );
+	}
 
 	// Get testSubproject from testrunner first
-	require( [ "data/testrunner.js" ], function() {
+	require( [ parentUrl + "test/data/testrunner.js" ], function() {
 		var i = 0,
 			tests = [
 				// A special module with basic tests, meant for
@@ -304,7 +363,7 @@ this.loadTests = function() {
 
 			if ( dep ) {
 				if ( !QUnit.basicTests || i === 1 ) {
-					require( [ dep ], loadDep );
+					require( [ parentUrl + "test/" + dep ], loadDep );
 
 				// Support: Android 2.3 only
 				// When running basic tests, replace other modules with dummies to avoid overloading
@@ -315,7 +374,11 @@ this.loadTests = function() {
 				}
 
 			} else {
-				QUnit.load();
+				if ( window.__karma__ && window.__karma__.start ) {
+					window.__karma__.start();
+				} else {
+					QUnit.load();
+				}
 
 				/**
 				 * Run in noConflict mode

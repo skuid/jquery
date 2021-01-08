@@ -2,23 +2,59 @@
 ( function() {
 	/* global loadTests: false */
 
-	var src,
-		path = window.location.pathname.split( "test" )[ 0 ],
-		QUnit = window.QUnit || parent.QUnit,
-		require = window.require || parent.require;
+	var config, src,
+		FILEPATH = "/test/jquery.js",
+		activeScript = [].slice.call( document.getElementsByTagName( "script" ), -1 )[ 0 ],
+		parentUrl = activeScript && activeScript.src ?
+			activeScript.src.replace( /[?#].*/, "" ) + FILEPATH.replace( /[^/]+/g, ".." ) + "/" :
+			"../",
+		QUnit = window.QUnit,
+		require = window.require;
 
-	// iFrames won't load AMD (the iframe tests synchronously expect jQuery to be there)
-	QUnit.config.urlConfig.push( {
-		id: "amd",
-		label: "Load with AMD",
-		tooltip: "Load the AMD jQuery file (and its dependencies)"
-	} );
+	function getQUnitConfig() {
+		var config = Object.create( null );
 
-	// If QUnit is on window, this is the main window
-	// This detection allows AMD tests to be run in an iframe
-	if ( QUnit.urlParams.amd && window.QUnit ) {
+		// Default to unminified jQuery for directly-opened iframes
+		if ( !QUnit ) {
+			config.dev = true;
+		} else {
+
+			// QUnit.config is populated from QUnit.urlParams but only at the beginning
+			// of the test run. We need to read both.
+			QUnit.config.urlConfig.forEach( function( entry ) {
+				config[ entry.id ] = QUnit.config[ entry.id ] != null ?
+					QUnit.config[ entry.id ] :
+					QUnit.urlParams[ entry.id ];
+			} );
+		}
+
+		return config;
+	}
+
+	// Define configuration parameters controlling how jQuery is loaded
+	if ( QUnit ) {
+		QUnit.config.urlConfig.push( {
+			id: "amd",
+			label: "Load with AMD",
+			tooltip: "Load the AMD jQuery file (and its dependencies)"
+		}, {
+			id: "dev",
+			label: "Load unminified",
+			tooltip: "Load the development (unminified) jQuery file"
+		} );
+	}
+
+	config = getQUnitConfig();
+
+	src = config.dev ?
+		"dist/jquery.js" :
+		"dist/jquery.min.js";
+
+	// Honor AMD loading on the main window (detected by seeing QUnit on it).
+	// This doesn't apply to iframes because they synchronously expect jQuery to be there.
+	if ( config.amd && QUnit ) {
 		require.config( {
-			baseUrl: path
+			baseUrl: parentUrl
 		} );
 		src = "src/jquery";
 
@@ -28,28 +64,10 @@
 		} else {
 			require( [ src ] );
 		}
-		return;
-	}
 
-	// Config parameter to use minified jQuery
-	QUnit.config.urlConfig.push( {
-		id: "dev",
-		label: "Load unminified",
-		tooltip: "Load the development (unminified) jQuery file"
-	} );
-	if ( QUnit.urlParams.dev ) {
-		src = "dist/jquery.js";
+	// Otherwise, load synchronously
 	} else {
-		src = "dist/jquery.min.js";
-	}
-
-	// Load jQuery
-	document.write( "<script id='jquery-js' src='" + path + src + "'><\x2Fscript>" );
-
-	// Synchronous-only tests
-	// Other tests are loaded from the test page
-	if ( typeof loadTests !== "undefined" ) {
-		document.write( "<script src='" + path + "test/unit/ready.js'><\x2Fscript>" );
+		document.write( "<script id='jquery-js' nonce='jquery+hardcoded+nonce' src='" + parentUrl + src + "'><\x2Fscript>" );
 	}
 
 } )();
